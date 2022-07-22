@@ -65,7 +65,9 @@ public class HiscoreResult
 	private Skill clueScrollElite;
 	private Skill clueScrollMaster;
 	private Skill lastManStanding;
+	private Skill pvpArenaRank;
 	private Skill soulWarsZeal;
+	private Skill riftsClosed;
 	private Skill abyssalSire;
 	private Skill alchemicalHydra;
 	private Skill barrowsChests;
@@ -189,8 +191,12 @@ public class HiscoreResult
 				return clueScrollMaster;
 			case LAST_MAN_STANDING:
 				return lastManStanding;
+			case PVP_ARENA_RANK:
+				return pvpArenaRank;
 			case SOUL_WARS_ZEAL:
 				return soulWarsZeal;
+			case RIFTS_CLOSED:
+				return riftsClosed;
 			case ABYSSAL_SIRE:
 				return abyssalSire;
 			case ALCHEMICAL_HYDRA:

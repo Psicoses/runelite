@@ -84,7 +84,12 @@ class HiscoreResultBuilder
 		hiscoreResult.setClueScrollElite(skills.get(index++));
 		hiscoreResult.setClueScrollMaster(skills.get(index++));
 		hiscoreResult.setLastManStanding(skills.get(index++));
+		if (skills.size() > 85)
+		{
+			hiscoreResult.setPvpArenaRank(skills.get(index++));
+		}
 		hiscoreResult.setSoulWarsZeal(skills.get(index++));
+		hiscoreResult.setRiftsClosed(skills.get(index++));
 		// seasonal doesn't have boss hiscores
 		if (index < skills.size())
 		{
@@ -115,10 +120,7 @@ class HiscoreResultBuilder
 			hiscoreResult.setKreearra(skills.get(index++));
 			hiscoreResult.setKrilTsutsaroth(skills.get(index++));
 			hiscoreResult.setMimic(skills.get(index++));
-			if (skills.size() > 83)
-			{
-				hiscoreResult.setNex(skills.get(index++));
-			}
+			hiscoreResult.setNex(skills.get(index++));
 			hiscoreResult.setNightmare(skills.get(index++));
 			hiscoreResult.setPhosanisNightmare(skills.get(index++));
 			hiscoreResult.setObor(skills.get(index++));
