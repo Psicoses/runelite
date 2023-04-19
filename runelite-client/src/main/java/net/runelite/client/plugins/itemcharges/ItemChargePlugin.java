@@ -46,6 +46,7 @@ import net.runelite.api.ItemContainer;
 import net.runelite.api.ItemID;
 import net.runelite.api.Varbits;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.VarbitChanged;
@@ -117,14 +118,14 @@ public class ItemChargePlugin extends Plugin
 	private static final String CHRONICLE_EMPTY_TEXT = "Your book has run out of charges.";
 	private static final String CHRONICLE_NO_CHARGES_TEXT = "Your book does not have any charges. Purchase some Teleport Cards from Diango.";
 	private static final Pattern BRACELET_OF_SLAUGHTER_ACTIVATE_PATTERN = Pattern.compile(
-		"Your bracelet of slaughter prevents your slayer count from decreasing. (?:(?:It has (\\d{1,2}) charges? left)|(It then crumbles to dust))\\."
+		"Your bracelet of slaughter prevents your slayer count from decreasing. (?:It has (\\d{1,2}) charges? left\\.|It then crumbles to dust\\.|It then regenerates itself to full charge!)"
 	);
 	private static final Pattern BRACELET_OF_SLAUGHTER_CHECK_PATTERN = Pattern.compile(
 		"Your bracelet of slaughter has (\\d{1,2}) charges? left\\."
 	);
 	private static final String BRACELET_OF_SLAUGHTER_BREAK_TEXT = "Your Bracelet of Slaughter has crumbled to dust.";
 	private static final Pattern EXPEDITIOUS_BRACELET_ACTIVATE_PATTERN = Pattern.compile(
-		"Your expeditious bracelet helps you progress your slayer (?:task )?faster. (?:(?:It has (\\d{1,2}) charges? left)|(It then crumbles to dust))\\."
+		"Your expeditious bracelet helps you progress your slayer (?:task )?faster. (?:It has (\\d{1,2}) charges? left\\.|It then crumbles to dust\\.|It then regenerates itself to full charge!)"
 	);
 	private static final Pattern EXPEDITIOUS_BRACELET_CHECK_PATTERN = Pattern.compile(
 		"Your expeditious bracelet has (\\d{1,2}) charges? left\\."
@@ -153,8 +154,6 @@ public class ItemChargePlugin extends Plugin
 	private static final int MAX_SLAYER_BRACELET_CHARGES = 30;
 	private static final int MAX_BLOOD_ESSENCE_CHARGES = 1000;
 	private static final int MAX_BRACELET_OF_CLAY_CHARGES = 28;
-
-	private int lastExplorerRingCharge = -1;
 
 	@Inject
 	private Client client;
@@ -186,6 +185,7 @@ public class ItemChargePlugin extends Plugin
 	// Limits destroy callback to once per tick
 	private int lastCheckTick;
 	private final Map<EquipmentInventorySlot, ItemChargeInfobox> infoboxes = new EnumMap<>(EquipmentInventorySlot.class);
+	private boolean loginFlag;
 
 	@Provides
 	ItemChargeConfig getConfig(ConfigManager configManager)
@@ -206,6 +206,26 @@ public class ItemChargePlugin extends Plugin
 		infoBoxManager.removeIf(ItemChargeInfobox.class::isInstance);
 		infoboxes.clear();
 		lastCheckTick = -1;
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged e)
+	{
+		// No VarbitChanged event fires on login if the explorer's ring is full (varbit value 0).
+		// So, set the value to 0 when LOGGED_IN. This is before the VarbitChanged event would fire,
+		// so if it shouldn't be 0 it will be updated later.
+		switch (e.getGameState())
+		{
+			case LOGGING_IN:
+				loginFlag = true;
+				break;
+			case LOGGED_IN:
+				if (loginFlag)
+				{
+					loginFlag = false;
+					updateExplorerRingCharges(0);
+				}
+		}
 	}
 
 	@Subscribe
@@ -502,11 +522,9 @@ public class ItemChargePlugin extends Plugin
 	@Subscribe
 	private void onVarbitChanged(VarbitChanged event)
 	{
-		int explorerRingCharge = client.getVarbitValue(Varbits.EXPLORER_RING_ALCHS);
-		if (lastExplorerRingCharge != explorerRingCharge)
+		if (event.getVarbitId() == Varbits.EXPLORER_RING_ALCHS)
 		{
-			lastExplorerRingCharge = explorerRingCharge;
-			updateExplorerRingCharges(explorerRingCharge);
+			updateExplorerRingCharges(event.getValue());
 		}
 	}
 

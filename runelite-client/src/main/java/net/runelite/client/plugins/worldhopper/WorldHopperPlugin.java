@@ -211,6 +211,7 @@ public class WorldHopperPlugin extends Plugin
 
 		panel.setSubscriptionFilterMode(config.subscriptionFilter());
 		panel.setRegionFilterMode(config.regionFilter());
+		panel.setWorldTypeFilters(config.worldTypeFilter());
 
 		// The plugin has its own executor for pings, as it blocks for a long time
 		hopperExecutorService = new ExecutorServiceExceptionLogger(Executors.newSingleThreadScheduledExecutor());
@@ -278,6 +279,10 @@ public class WorldHopperPlugin extends Plugin
 					break;
 				case "regionFilter":
 					panel.setRegionFilterMode(config.regionFilter());
+					updateList();
+					break;
+				case "worldTypeFilter":
+					panel.setWorldTypeFilters(config.worldTypeFilter());
 					updateList();
 					break;
 			}
@@ -362,14 +367,11 @@ public class WorldHopperPlugin extends Plugin
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged varbitChanged)
 	{
-		int old1 = favoriteWorld1;
-		int old2 = favoriteWorld2;
-
-		favoriteWorld1 = client.getVarbitValue(Varbits.WORLDHOPPER_FAVROITE_1);
-		favoriteWorld2 = client.getVarbitValue(Varbits.WORLDHOPPER_FAVROITE_2);
-
-		if (old1 != favoriteWorld1 || old2 != favoriteWorld2)
+		if (varbitChanged.getVarbitId() == Varbits.WORLDHOPPER_FAVROITE_1
+			|| varbitChanged.getVarbitId() == Varbits.WORLDHOPPER_FAVROITE_2)
 		{
+			favoriteWorld1 = client.getVarbitValue(Varbits.WORLDHOPPER_FAVROITE_1);
+			favoriteWorld2 = client.getVarbitValue(Varbits.WORLDHOPPER_FAVROITE_2);
 			SwingUtilities.invokeLater(panel::updateList);
 		}
 	}
@@ -536,7 +538,7 @@ public class WorldHopperPlugin extends Plugin
 		int worldIdx = worlds.indexOf(currentWorld);
 		int totalLevel = client.getTotalLevel();
 
-		final Set<RegionFilterMode> regionFilter = config.quickHopRegionFilter();
+		final Set<RegionFilterMode> regionFilter = config.regionFilter();
 
 		World world;
 		do
@@ -600,6 +602,12 @@ public class WorldHopperPlugin extends Plugin
 			// Avoid switching to near-max population worlds, as it will refuse to allow the hop if the world is full
 			if (world.getPlayers() >= MAX_PLAYER_COUNT)
 			{
+				continue;
+			}
+
+			if (world.getPlayers() < 0)
+			{
+				// offline world
 				continue;
 			}
 

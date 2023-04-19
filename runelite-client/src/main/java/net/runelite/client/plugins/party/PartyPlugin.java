@@ -30,6 +30,7 @@ import com.google.inject.Binder;
 import com.google.inject.Provides;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,10 +42,10 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.swing.SwingUtilities;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
@@ -64,7 +65,6 @@ import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.events.PartyChanged;
 import net.runelite.client.events.PartyMemberAvatar;
 import net.runelite.client.input.KeyManager;
@@ -98,6 +98,7 @@ import net.runelite.client.util.Text;
 	description = "Party management and basic info",
 	enabledByDefault = false
 )
+@Slf4j
 public class PartyPlugin extends Plugin
 {
 	@Inject
@@ -146,6 +147,8 @@ public class PartyPlugin extends Plugin
 	@Getter
 	private final List<PartyTilePingData> pendingTilePings = Collections.synchronizedList(new ArrayList<>());
 
+	private Instant lastLogout;
+
 	private PartyPanel panel;
 	private NavigationButton navButton;
 
@@ -178,6 +181,7 @@ public class PartyPlugin extends Plugin
 	@Override
 	protected void startUp() throws Exception
 	{
+		lastLogout = Instant.now();
 		panel = injector.getInstance(PartyPanel.class);
 
 		final BufferedImage icon = ImageUtil.loadImageResource(PartyPlugin.class, "panel_icon.png");
@@ -204,6 +208,7 @@ public class PartyPlugin extends Plugin
 	@Override
 	protected void shutDown() throws Exception
 	{
+		lastLogout = null;
 		clientToolbar.removeNavigation(navButton);
 
 		panel = null;
@@ -236,17 +241,6 @@ public class PartyPlugin extends Plugin
 		}
 	}
 
-	@Subscribe
-	public void onOverlayMenuClicked(OverlayMenuClicked event)
-	{
-		if (event.getEntry().getMenuAction() == MenuAction.RUNELITE_OVERLAY &&
-			event.getEntry().getTarget().equals("Party") &&
-			event.getEntry().getOption().equals("Leave"))
-		{
-			leaveParty();
-		}
-	}
-
 	void leaveParty()
 	{
 		party.changeParty(null);
@@ -266,7 +260,7 @@ public class PartyPlugin extends Plugin
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		if (!hotkeyPressed || client.isMenuOpen() || party.getMembers().isEmpty() || !config.pings())
+		if (!hotkeyPressed || client.isMenuOpen() || !party.isInParty() || !config.pings())
 		{
 			return;
 		}
@@ -305,6 +299,11 @@ public class PartyPlugin extends Plugin
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
+		if (event.getGameState() == GameState.LOGIN_SCREEN)
+		{
+			lastLogout = Instant.now();
+		}
+
 		checkStateChanged(false);
 	}
 
@@ -335,16 +334,21 @@ public class PartyPlugin extends Plugin
 		period = 10,
 		unit = ChronoUnit.SECONDS
 	)
-	public void shareLocation()
+	public void scheduledTick()
 	{
-		if (client.getGameState() != GameState.LOGGED_IN)
+		if (client.getGameState() == GameState.LOGGED_IN)
 		{
-			return;
+			shareLocation();
 		}
+		else if (client.getGameState() == GameState.LOGIN_SCREEN)
+		{
+			checkIdle();
+		}
+	}
 
-		final PartyMember localMember = party.getLocalMember();
-
-		if (localMember == null)
+	private void shareLocation()
+	{
+		if (!party.isInParty())
 		{
 			return;
 		}
@@ -361,6 +365,16 @@ public class PartyPlugin extends Plugin
 		party.send(locationUpdate);
 	}
 
+	private void checkIdle()
+	{
+		if (lastLogout != null && lastLogout.isBefore(Instant.now().minus(30, ChronoUnit.MINUTES))
+			&& party.isInParty())
+		{
+			log.info("Leaving party due to inactivity");
+			party.changeParty(null);
+		}
+	}
+
 	@Subscribe
 	public void onGameTick(final GameTick event)
 	{
@@ -369,7 +383,7 @@ public class PartyPlugin extends Plugin
 
 	void requestSync()
 	{
-		if (!party.getMembers().isEmpty())
+		if (party.isInParty())
 		{
 			// Request sync
 			final UserSync userSync = new UserSync();
@@ -469,8 +483,12 @@ public class PartyPlugin extends Plugin
 			forceSend = true;
 		}
 
-		final PartyMember localMember = party.getLocalMember();
-		if (localMember == null)
+		if (!party.isInParty())
+		{
+			return;
+		}
+
+		if (!forceSend && client.getTickCount() % messageFreq(party.getMembers().size()) != 0)
 		{
 			return;
 		}
@@ -479,8 +497,8 @@ public class PartyPlugin extends Plugin
 		final int prayerCurrent = client.getBoostedSkillLevel(Skill.PRAYER);
 		final int healthMax = client.getRealSkillLevel(Skill.HITPOINTS);
 		final int prayerMax = client.getRealSkillLevel(Skill.PRAYER);
-		final int runEnergy = (int) Math.ceil(client.getEnergy() / 10.0) * 10; // flatten to reduce network load
-		final int specEnergy = client.getVar(VarPlayer.SPECIAL_ATTACK_PERCENT) / 10;
+		final int runEnergy = (int) Math.ceil(client.getEnergy() / 1000.0) * 10; // flatten to reduce network load
+		final int specEnergy = client.getVarpValue(VarPlayer.SPECIAL_ATTACK_PERCENT) / 10;
 		final boolean vengActive = client.getVarbitValue(Varbits.VENGEANCE_ACTIVE) == 1;
 
 		final Player localPlayer = client.getLocalPlayer();
@@ -629,5 +647,11 @@ public class PartyPlugin extends Plugin
 			SwingUtilities.invokeLater(() -> panel.addMember(partyData));
 			return partyData;
 		});
+	}
+
+	private static int messageFreq(int partySize)
+	{
+		// introduce a tick delay for each member >6
+		return Math.max(1, partySize - 6);
 	}
 }
