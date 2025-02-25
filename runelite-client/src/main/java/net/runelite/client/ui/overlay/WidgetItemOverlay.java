@@ -44,7 +44,7 @@ public abstract class WidgetItemOverlay extends Overlay
 	protected WidgetItemOverlay()
 	{
 		super.setPosition(OverlayPosition.DYNAMIC);
-		super.setPriority(OverlayPriority.LOW);
+		super.setPriority(PRIORITY_LOW);
 		super.setLayer(OverlayLayer.MANUAL);
 	}
 
@@ -112,8 +112,6 @@ public abstract class WidgetItemOverlay extends Overlay
 			InterfaceID.EQUIPMENT_INVENTORY,
 			InterfaceID.INVENTORY,
 			InterfaceID.SEED_VAULT_INVENTORY,
-			InterfaceID.DUEL_INVENTORY,
-			InterfaceID.DUEL_INVENTORY_OTHER,
 			InterfaceID.TRADE,
 			InterfaceID.TRADE_INVENTORY,
 			InterfaceID.POH_TREASURE_CHEST_INV);
@@ -135,16 +133,10 @@ public abstract class WidgetItemOverlay extends Overlay
 		Arrays.stream(ids).forEach(this::drawAfterInterface);
 	}
 
-	// Don't allow setting position, priority, or layer
+	// Don't allow setting position or layer
 
 	@Override
 	public void setPosition(OverlayPosition position)
-	{
-		throw new IllegalStateException();
-	}
-
-	@Override
-	public void setPriority(OverlayPriority priority)
 	{
 		throw new IllegalStateException();
 	}

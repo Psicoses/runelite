@@ -38,7 +38,6 @@ import net.runelite.api.Client;
 import net.runelite.api.GameObject;
 import net.runelite.api.ItemID;
 import net.runelite.api.NPC;
-import net.runelite.api.ObjectComposition;
 import net.runelite.api.ObjectID;
 import net.runelite.api.Perspective;
 import net.runelite.api.Point;
@@ -88,6 +87,7 @@ class WoodcuttingSceneOverlay extends Overlay
 		renderForestryPheasants(graphics);
 		renderForestryBeeHive(graphics);
 		renderEnchantmentRitual(graphics);
+		renderLeprechaun(graphics);
 		return null;
 	}
 
@@ -291,6 +291,21 @@ class WoodcuttingSceneOverlay extends Overlay
 		}
 	}
 
+	private void renderLeprechaun(Graphics2D graphics)
+	{
+		if (!plugin.getEndOfRainbows().isEmpty() && config.highlightLeprechaunRainbow())
+		{
+			for (var rainbow : plugin.getEndOfRainbows())
+			{
+				var poly = rainbow.getCanvasTilePoly();
+				if (poly != null)
+				{
+					OverlayUtil.renderPolygon(graphics, poly, Color.GREEN);
+				}
+			}
+		}
+	}
+
 	private void renderRedwoods(Graphics2D graphics)
 	{
 		if (plugin.getSession() == null || !config.showRedwoodTrees())
@@ -298,17 +313,10 @@ class WoodcuttingSceneOverlay extends Overlay
 			return;
 		}
 
-		for (GameObject treeObject : plugin.getTreeObjects())
+		for (GameObject treeObject : plugin.getRedwoods())
 		{
 			if (treeObject.getWorldLocation().distanceTo(client.getLocalPlayer().getWorldLocation()) <= 12)
 			{
-				// Redwood trees at the farming guild are multilocs rather than global objects synced for all players
-				// so we must handle them here rather than relying on GameObjectSpawned events
-				final ObjectComposition treeComp = client.getObjectDefinition(treeObject.getId());
-				if (treeComp.getImpostorIds() != null && Tree.findTree(treeComp.getImpostor().getId()) == null)
-				{
-					continue;
-				}
 				OverlayUtil.renderImageLocation(client, graphics, treeObject.getLocalLocation(), itemManager.getImage(ItemID.REDWOOD_LOGS), 120);
 			}
 		}
