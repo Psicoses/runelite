@@ -54,6 +54,31 @@ public interface GpuPluginConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "hideUnrelatedMaps",
+		name = "Hide unrelated maps",
+		description = "Hide unrelated map areas you shouldn't see.",
+		position = 2
+	)
+	default boolean hideUnrelatedMaps()
+	{
+		return true;
+	}
+
+	@Range(
+		max = 5
+	)
+	@ConfigItem(
+		keyName = "expandedMapLoadingChunks",
+		name = "Extended map loading",
+		description = "Extra map area to load, in 8 tile chunks.",
+		position = 1
+	)
+	default int expandedMapLoadingChunks()
+	{
+		return 3;
+	}
+
+	@ConfigItem(
 		keyName = "smoothBanding",
 		name = "Remove Color Banding",
 		description = "Smooths out the color banding that is present in the CPU renderer",
@@ -157,7 +182,7 @@ public interface GpuPluginConfig extends Config
 	)
 	default boolean unlockFps()
 	{
-		return false;
+		return true;
 	}
 
 	enum SyncMode
@@ -175,7 +200,7 @@ public interface GpuPluginConfig extends Config
 	)
 	default SyncMode syncMode()
 	{
-		return SyncMode.ADAPTIVE;
+		return SyncMode.OFF;
 	}
 
 	@ConfigItem(

@@ -68,14 +68,17 @@ public interface DrawCallbacks
 
 	/**
 	 * Called before the scene is drawn
-	 * @param cameraX
-	 * @param cameraY
-	 * @param cameraZ
-	 * @param cameraPitch
-	 * @param cameraYaw
-	 * @param plane
 	 */
-	void drawScene(int cameraX, int cameraY, int cameraZ, int cameraPitch, int cameraYaw, int plane);
+	default void drawScene(double cameraX, double cameraY, double cameraZ, double cameraPitch, double cameraYaw, int plane)
+	{
+	}
+
+	/**
+	 * Called before the scene is drawn
+	 */
+	default void drawScene(int cameraX, int cameraY, int cameraZ, int cameraPitch, int cameraYaw, int plane)
+	{
+	}
 
 	/**
 	 * Called after the scene has been drawn
@@ -87,4 +90,9 @@ public interface DrawCallbacks
 	void loadScene(Scene scene);
 
 	void swapScene(Scene scene);
+
+	default boolean tileInFrustum(Scene scene, int pitchSin, int pitchCos, int yawSin, int yawCos, int cameraX, int cameraY, int cameraZ, int plane, int msx, int msy)
+	{
+		return true;
+	}
 }
